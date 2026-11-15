@@ -15,3 +15,5 @@ backups/
 !deploy/.env.production.example
 
 ._*
+
+.deployed-revision
