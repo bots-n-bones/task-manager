@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.local/
+.DS_Store
+deploy/.env.production
+
+# Local Supabase state and generated backups
+supabase/.temp/
+supabase/.branches/
+*.dump
+*.log
+backups/
+!deploy/.env.production.example
+
+._*

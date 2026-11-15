@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {cleanupDeletedMembers} from '../../server/member-deletion.mjs';
+const job={user_id:'10000000-0000-4000-8000-000000000001',auth_id:'20000000-0000-4000-8000-000000000002'};
+const patches=[],calls=[];
+const db=async(path,request)=>request?(patches.push({path,request}),null):[job];
+assert.equal(await cleanupDeletedMembers(job.user_id,db,async(...args)=>calls.push(args)),1);
+assert.equal(calls[0][0],'admin/users/'+job.auth_id);assert.equal(calls[0][3],'DELETE');assert.equal(patches.length,1);
+assert.ok(patches[0].request.body.auth_deleted_at);
+patches.length=0;
+await cleanupDeletedMembers(job.user_id,db,async()=>{throw {authStatus:404};});assert.equal(patches.length,1);
+patches.length=0;
+await assert.rejects(cleanupDeletedMembers(job.user_id,db,async()=>{throw Error('Temporary auth outage');}));assert.equal(patches.length,0);
+console.log('Deleted-login cleanup, safe retries and already-removed accounts verified');

@@ -1,0 +1,42 @@
+/* Two themes: light (default) and night */
+:root, [data-theme="light"] {
+  --canvas: #f6f6f7; --ash: #f1f1f3; --card: #ffffff; --ink: #18181b;
+  --hairline: #e4e4e7; --muted: #71717a; --moss: #2563eb; --fern: #2563eb;
+  --emerald: #16a34a; --charcoal: #18181b; --sage: #8b5cf6; --indigo: #4f46e5;
+  --dot: #dcdce0; --logo-filter: none; --field: #f1f1f3; --chip-ink: #ffffff;
+  --scrim: rgba(24, 24, 27, 0.4); --error: #dc2626; --shade: rgba(24, 24, 27, 0.05);
+  --stage: #ececef;
+  --t-image: #eab308; --t-video: #7c3aed; --t-audio: #f59e0b; --t-text: #2563eb; --t-any: #18181b;
+  --marquee: rgba(37, 99, 235, 0.08); --marquee-line: #2563eb; --on-accent: #ffffff;
+
+  /* Semantic aliases */
+  --surface-canvas: var(--canvas);
+  --surface-panel: var(--ash);
+  --surface-card: var(--card);
+  --surface-field: var(--field);
+  --surface-stage: var(--stage);
+  --surface-node-dark: var(--charcoal);
+  --surface-hover: var(--shade);
+  --text-primary: var(--ink);
+  --text-muted: var(--muted);
+  --text-on-ink: var(--chip-ink);
+  --text-on-accent: var(--on-accent);
+  --text-link: var(--fern);
+  --border-hairline: var(--hairline);
+  --accent: var(--moss);
+  --accent-strong: var(--emerald);
+  --state-idle: var(--muted);
+  --state-running: var(--emerald);
+  --state-done: var(--fern);
+  --state-error: var(--error);
+}
+[data-theme="night"] {
+  --canvas: #131312; --ash: #181817; --card: #1e1e1c; --ink: #e4e2dc;
+  --hairline: #2f2e2b; --muted: #8f8c91; --moss: #f4d941; --fern: #00c9cf;
+  --emerald: #49f7a5; --charcoal: #1a2742; --sage: #c8c2e8; --indigo: #c8c2e8;
+  --dot: #2a2927; --logo-filter: invert(1); --field: #181817; --chip-ink: #131312;
+  --scrim: rgba(0, 0, 0, 0.7); --error: #ff5c45; --shade: rgba(255, 255, 255, 0.06);
+  --stage: #0e0e0d;
+  --t-image: #00c9cf; --t-video: #f8957b; --t-audio: #c8c2e8; --t-text: #f4d941; --t-any: #e4e2dc;
+  --marquee: rgba(73, 247, 165, 0.12); --marquee-line: #49f7a5; --on-accent: #191917;
+}

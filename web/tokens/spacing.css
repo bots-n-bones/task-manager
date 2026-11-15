@@ -1,0 +1,23 @@
+:root {
+  --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px;
+  --space-12: 12px; --space-14: 14px; --space-16: 16px; --space-20: 20px; --space-24: 24px; --space-44: 44px;
+
+  --radius-sm: 4px;      /* buttons, inputs, chips, fields */
+  --radius-md: 12px;     /* nodes, primary CTA, cards */
+  --radius-pill: 9999px; /* profile chip */
+
+  --h-topbar: 56px; --h-crumb: 34px; --h-node-head: 36px; --h-row: 26px; --port-size: 10px;
+  --node-w: 240px;
+}
+/* ring/rule tokens reference theme colors — re-resolve on every themed subtree */
+:root, [data-theme] {
+
+  --ring-hairline: var(--hairline) 0px 0px 0px 1px inset;
+  --ring-selected: var(--ink) 0px 0px 0px 1.5px inset;
+  --ring-running: var(--emerald) 0px 0px 0px 1px inset;
+  --ring-error: var(--error) 0px 0px 0px 1px inset;
+  --rule-bottom: var(--hairline) 0px -1px 0px 0px inset;
+  --rule-right: var(--hairline) -1px 0px 0px 0px inset;
+  --shadow-lift: rgba(9, 53, 45, 0.05) 0px 5px 6px -4px;
+  --shadow-drag: rgba(9, 53, 45, 0.10) 0px 10px 18px -8px;
+}

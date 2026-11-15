@@ -1,0 +1,45 @@
+services:
+  web:
+    build:
+      context: ..
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      APP_ORIGIN: https://tasks.molotilka.site
+    ports:
+      - "127.0.0.1:18300:3000"
+    mem_limit: 192m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.task-manager.rule: Host(`tasks.molotilka.site`)
+      traefik.http.routers.task-manager.entrypoints: websecure
+      traefik.http.routers.task-manager.tls.certresolver: letsencrypt
+      traefik.http.services.task-manager.loadbalancer.server.port: "3000"
+  bot:
+    build:
+      context: ..
+    command: ["node", "bot/main.mjs"]
+    environment:
+      APP_ORIGIN: https://tasks.molotilka.site
+    restart: unless-stopped
+    env_file: .env.production
+    mem_limit: 192m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

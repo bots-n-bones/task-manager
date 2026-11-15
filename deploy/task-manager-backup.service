@@ -1,0 +1,9 @@
+[Unit]
+Description=Task manager database and file backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/team-task-manager/deploy/backup.py

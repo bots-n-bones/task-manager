@@ -1,0 +1,5 @@
+* { box-sizing: border-box; }
+a { color: var(--fern); text-decoration: none; }
+a:hover { text-decoration: underline; }
+input, textarea, button, select { font: inherit; color: inherit; }
+::placeholder { color: var(--muted); }
