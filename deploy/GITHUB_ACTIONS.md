@@ -2,7 +2,7 @@
 
 Pushes to main and manual runs of Deploy to Hostinger deploy the selected commit to tasks.molotilka.site. Runs are serialized. The production environment links to the live site.
 
-GitHub Secrets hold HOSTINGER_HOST, HOSTINGER_KNOWN_HOSTS and HOSTINGER_DEPLOY_KEY. The SSH key is restricted to the installed /usr/local/sbin/task-manager-deploy command. It accepts a commit SHA and downloads source from bots-n-bones/task-manager. The server host key is pinned.
+GitHub Secrets hold HOSTINGER_HOST, HOSTINGER_KNOWN_HOSTS and HOSTINGER_DEPLOY_KEY. SSH connects as taskdeploy, whose only sudo command is the deployment script. The SSH key is restricted to the installed /usr/local/sbin/task-manager-deploy command. It accepts a commit SHA and downloads source from bots-n-bones/task-manager. The server host key is pinned.
 
 The deployment checks JavaScript syntax and browser compatibility, takes a database and file backup, builds and restarts web and bot, and checks public health. Failed builds or health checks restore the previous application source and images. Backups are stored in /opt/team-task-manager/backups.
 

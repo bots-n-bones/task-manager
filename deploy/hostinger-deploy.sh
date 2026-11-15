@@ -2,7 +2,8 @@
 # Install as /usr/local/sbin/task-manager-deploy and use as an SSH forced command.
 set -Eeuo pipefail
 umask 077
-if [[ ! ${SSH_ORIGINAL_COMMAND:-} =~ ^deploy\ ([0-9a-f]{40})$ ]]; then
+command=${1:-${SSH_ORIGINAL_COMMAND:-}}
+if [[ ! $command =~ ^deploy\ ([0-9a-f]{40})$ ]]; then
   echo "Expected deploy followed by a commit SHA" >&2
   exit 2
 fi
