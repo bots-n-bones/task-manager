@@ -110,7 +110,7 @@ aside button:hover, aside button.active { background: var(--surface-card); }
 aside button.active { box-shadow: var(--ring-hairline); }
 aside a, aside footer { padding: var(--space-8) var(--space-10); }
 .sidebar-bottom { margin-top: auto; display: grid; gap: var(--space-4); }
-aside footer { color: var(--text-muted); font: var(--text-mono) var(--font-mono); }
+aside footer { color: var(--text-muted); font: var(--text-body) var(--font-mono); }
 
 main { min-width: 0; width: 100%; max-width: 1320px; margin-inline: auto; padding: 36px 32px 72px; }
 main > header {
