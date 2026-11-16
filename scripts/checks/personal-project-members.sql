@@ -25,7 +25,12 @@ begin
  perform team_command_user(owner,'project_admins',jsonb_build_object('id',project,'admins',jsonb_build_array(next_owner)));
  assert (select user_id from project_admins where project_id=project)=next_owner;
  perform team_command_user(next_owner,'project_members',jsonb_build_object('id',project,'members','[]'::jsonb));
- assert not can_view_project(project,member);
+ assert can_view_project(project,member);
+ perform team_command_user(next_owner,'project_members',jsonb_build_object('id',project,'members',jsonb_build_array(outsider)));
+ assert can_view_project(project,outsider);
+ assert can_view_project(project,member);
+ perform team_command_user(next_owner,'project_members',jsonb_build_object('id',project,'members',jsonb_build_array(outsider)));
+ assert (select count(*) from project_members where project_id=project)=2;
  begin
    perform team_command_user(member,'project_create','{"name":"Forbidden project"}');
    raise exception 'Member created a project';

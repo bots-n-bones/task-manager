@@ -393,12 +393,13 @@ function edit(t,projectId){
   dialog.close();await screen();notice(t?'Changes saved.':'Task created.');
  }catch(e){notice(e.message);}finally{submit.disabled=false;}};content.append(form);
 }
-function projectMemberFields(form,selected=[]){
+function projectMemberFields(form,selected=[],addOnly=false){
  const group=el('fieldset');group.append(el('legend','Project members'));
  group.append(el('p','Selected people see this personal project even when they have no tasks assigned.','muted'));
  for(const member of members){
    const input=field(group,'project_members',member.name,'checkbox');
    input.value=member.id;input.checked=selected.includes(member.id);
+   input.disabled=addOnly && input.checked;
  }
  form.append(group);
  return group;
@@ -456,10 +457,11 @@ async function projectScreen(main){
      const submit=el('button','Save','primary');form.append(submit);
      form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;try{await api('projects',{action:'project_admins',data:{id:project.id,admins:[owner.value]}});dialog.close();await screen();}catch(error){notice(error.message);submit.disabled=false;}};
      content.append(form);
-   }),...(project.visibility==='personal'?[button('Project members',()=>{
-     modal('Members · '+project.name);const form=el('form');
-     projectMemberFields(form,project.members ?? []);
-     const submit=el('button','Save members','primary');form.append(submit);
+   }),...(project.visibility==='personal'?[button('Add members',()=>{
+     modal('Add members · '+project.name);const form=el('form');
+     projectMemberFields(form,project.members ?? [],true);
+     form.append(el('p','Existing members stay assigned. Select additional people to give them access.','muted'));
+     const submit=el('button','Add selected members','primary');form.append(submit);
      form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;try{await api('projects',{action:'project_members',data:{id:project.id,members:new FormData(form).getAll('project_members')}});dialog.close();await screen();}catch(error){notice(error.message);submit.disabled=false;}};
      content.append(form);
    })]:[]),button('Delete project',()=>{
