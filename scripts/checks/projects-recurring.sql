@@ -64,6 +64,10 @@ begin
  assert task->'working_links'=links;
  answer:=bot_event(988161100001,988161100002,'QA outsider','open',task->>'number');
  assert answer->>'message'='Project or task unavailable.';
+ answer:=bot_event(988161100003,988161100002,'QA outsider','create','');
+ assert not exists(select 1 from jsonb_array_elements(answer->'options') option where (option->>'id')::bigint=project_id);
+ answer:=bot_event(988161100004,988161100002,'QA outsider','pick',(answer#>>'{draft,token}')||':'||project_id);
+ assert answer->>'step'='form_project';
  perform team_command_user(owner_id,'project_visibility',jsonb_build_object('id',project_id,'visibility','shared'));
  assert can_view_project(project_id,outsider_id);
  assert not can_view_task((task->>'id')::uuid,outsider_id);
