@@ -8,14 +8,17 @@ begin
  insert into public.users(name,role,telegram_id) values('Other archive test','user',988131400002) returning id into other_id;
  insert into public.users(name,role,telegram_id) values('Project admin test','admin',988131400003) returning id into admin_id;
  insert into public.users(name,role,active) values('Inactive project test','user',false) returning id into inactive_id;
- result:=public.team_command_user(member_id,'project_create',jsonb_build_object('name','Member project test','admins',jsonb_build_array(admin_id)));
+ result:=public.team_command_user(admin_id,'project_create',jsonb_build_object('name','Member project test','admins',jsonb_build_array(admin_id)));
  fixture_project:=(result->>'id')::bigint;
  assert exists(select 1 from public.project_admins where project_admins.project_id=fixture_project and user_id=admin_id);
  assert not exists(select 1 from public.project_admins where user_id=member_id);
  assert (select role='user' from public.users where id=member_id);
- assert public.team_command(988131400001,'project_create','{"name":"Telegram member project test"}')->>'id' is not null;
  begin
-   perform public.team_command_user(member_id,'project_create',jsonb_build_object('name','Invalid owner','admins',jsonb_build_array(member_id)));
+   perform public.team_command(988131400001,'project_create','{"name":"Telegram member project test"}');
+   raise exception 'Member created project';
+ exception when insufficient_privilege then null; end;
+ begin
+   perform public.team_command_user(admin_id,'project_create',jsonb_build_object('name','Invalid owner','admins',jsonb_build_array(member_id)));
    raise exception 'Non-admin owner accepted';
  exception when check_violation then null; end;
  begin

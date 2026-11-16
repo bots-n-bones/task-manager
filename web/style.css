@@ -300,3 +300,5 @@ code { font: var(--text-mono) var(--font-mono); overflow-wrap: anywhere; user-se
 }
 
 .form-notice { padding: var(--space-12); background: var(--surface-panel); border-radius: var(--radius-sm); box-shadow: var(--ring-hairline); overflow-wrap: anywhere; }
+
+.status[data-status="recurring"] { color: var(--accent); }

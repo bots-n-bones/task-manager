@@ -1,6 +1,6 @@
 import {newRequestId,watchTheme,requestJson} from './browser.mjs';
 const app=document.querySelector('#app'),dialog=document.querySelector('#dialog'),content=document.querySelector('#dialog-content');
-const statuses={new:'New',in_progress:'In progress',review:'In review',done:'Done',cancelled:'Cancelled'};
+const statuses={new:'New',in_progress:'In progress',recurring:'Recurring',review:'In review',done:'Done',cancelled:'Cancelled'};
 const moscowDate = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Moscow',dateStyle:'short'});
 const displayDate = value => value.slice(0,10).split('-').reverse().join('.');
 const importanceOptions = [['true','Important'],['false','Normal']];
@@ -15,7 +15,7 @@ try {
  // The theme still works in webviews that block local storage.
 }
 let dialogBack=null;
-let user,projects=[],members=[],page=0,scope='mine',filters={},activeProject=null;
+let user,projects=[],members=[],page=0,scope='mine',filters={},activeProject=null,projectVisibility='shared';
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 function topbar(){
  const bar=el('header',undefined,'topbar');
@@ -41,8 +41,8 @@ function reviewDate(value){return new Date(value).toLocaleString('en-GB',{timeZo
 function reviewTag(){return el('span','Changes requested','status review-tag');}
 function feedbackPanel(task){
  const review=task.latest_review;
- if(review?.decision!=='returned' || !['in_progress','review'].includes(task.status))return null;
- if(task.status==='in_progress'&&!needsChanges(task))return null;
+ if(review?.decision!=='returned' || !['in_progress','recurring','review'].includes(task.status))return null;
+ if(['in_progress','recurring'].includes(task.status)&&!needsChanges(task))return null;
  const panel=el('section',undefined,'review-feedback');panel.setAttribute('aria-label','Review feedback');
  panel.append(el('h3',needsChanges(task)?'Changes requested':'Previous feedback'),
    el('p',review.reviewer_name+' · '+reviewDate(review.created_at),'muted'),el('p',review.comment,'detail'));
@@ -136,7 +136,7 @@ async function start(){
  for(const [key,label] of [['mine','My tasks'],['today','Due today'],['overdue','Overdue'],['projects','Projects'],...(user.role==='admin'?[['all','All tasks']]:[]),['archive','Archive'],...(user.role==='admin'?[['cancelled','Cancelled']]:[]),...(user.role==='admin'?[['accounts','Members']]:[])]){
   const b=button(label,async()=>{scope=key;activeProject=null;page=0;if(key==='archive')filters={};if(['today','overdue'].includes(key))delete filters.deadline;await screen();});b.dataset.scope=key;navigation.append(b);
  }
- const telegramLink=el('a','Open in Telegram');telegramLink.href='https://t.me/bnb_tasks_manager_bot?start=web';telegramLink.target='_blank';telegramLink.rel='noopener';const bottom=el('div',undefined,'sidebar-bottom');bottom.append(button('Link Telegram',async()=>{const {code}=await api('link-code',{});modal('Link Telegram');content.append(el('p','Send this command to the bot within 15 minutes.'),el('code','/link '+code));}),el('footer',user.name));aside.append(telegramLink,bottom);shell.append(aside,el('main'));app.replaceChildren(topbar(),shell);await screen();
+ const telegramLink=el('a','Open in Telegram');telegramLink.href='https://t.me/bnb_tasks_manager_bot?start=web';telegramLink.target='_self';const bottom=el('div',undefined,'sidebar-bottom');bottom.append(button('Link Telegram',async()=>{const {code}=await api('link-code',{});modal('Link Telegram');content.append(el('p','Send this command to the bot within 15 minutes.'),el('code','/link '+code));}),el('footer',user.name));aside.append(telegramLink,bottom);shell.append(aside,el('main'));app.replaceChildren(topbar(),shell);await screen();
 }
 async function screen(){
  for(const b of document.querySelectorAll('[data-scope]')){
@@ -213,6 +213,16 @@ async function card(number){
  el('p','Project · '+t.project),el('p','Due · '+displayDate(t.due_date)),el('p','Created · '+moscowDate.format(new Date(t.created_at))),
  el('p','Assignees · '+t.assignees.map(m=>m.name).join(', ')),el('p','Owners · '+t.admins.map(m=>m.name).join(', ')));
  content.append(el('p',[t.important?'Important':'Normal',t.renewable?'Recurring':t.quick?'Quick':''].filter(Boolean).join(' · ')));
+ if(t.renewable)content.append(el('p','Keep working materials here as you update this task. An administrator can finish it when the work is complete.','muted'));
+ content.append(el('h3','Working materials'));
+ for(const material of t.working_links ?? []){
+   const url=new URL(material.url);
+   if(!['https:','http:'].includes(url.protocol))continue;
+   const link=el('a',material.title);link.href=url.href;link.target='_self';
+   const row=el('p');row.append(link);content.append(row);
+ }
+ if(!t.working_links?.length)content.append(el('p','No working links yet.','muted'));
+ if(!['done','cancelled'].includes(t.status))content.append(button('Edit working links',()=>editMaterials(t)));
  if(t.result)content.append(el('div',undefined,'divider'),el('h3','Result'),el('p',t.result,'detail'));
  for(const file of t.attachments ?? []){const link=el('a','Download '+file.name);link.href='/api/files/'+file.id;const row=el('p');row.append(link);content.append(row);}
  const actions=el('div',undefined,'actions');
@@ -240,18 +250,52 @@ async function card(number){
      content.append(item);
    }
  }));const assignee=t.assignees.some(m=>m.id===user.id);
+ if(t.status==='recurring' && user.role==='admin')actions.append(button('Finish recurring task',()=>{
+   modal('Finish recurring task?',()=>card(number));
+   content.append(el('p','This will mark the task as Done. Working links remain available in its details.'),
+     button('Mark as done',async()=>{await mutate('complete',t);await card(number);await screen();},'primary'));
+ }));
  if(t.status==='new' && assignee)actions.append(button('Start work',async()=>{await mutate('begin',t);await card(number);await screen();},'primary'));
- if(t.status==='in_progress' && assignee)actions.append(button(needsChanges(t)?'Resubmit for review':'Submit result',()=>textAction(needsChanges(t)?'Resubmit for review':'Result','result',t,'text'),'primary'));
- if(t.status==='review' && user.role==='admin')actions.append(button('Approve',async()=>{await mutate('approve',t);await card(number);await screen();},'primary'),button('Request changes',()=>textAction('Request changes','return',t,'comment')));
+ if(['in_progress','recurring'].includes(t.status) && assignee)actions.append(button(needsChanges(t)?'Resubmit for review':'Submit result',()=>textAction(needsChanges(t)?'Resubmit for review':'Result','result',t,'text'),'primary'));
+ if(t.status==='review' && user.role==='admin')actions.append(button(t.renewable?'Approve update':'Approve',async()=>{await mutate('approve',t);await card(number);await screen();},'primary'),button('Request changes',()=>textAction('Request changes','return',t,'comment')));
  if(!['done','cancelled'].includes(t.status) && (user.role==='admin'||t.author_id===user.id)){
   actions.append(button('Change due date',()=>editDeadline(t)),button('Edit',()=>edit(t)),button('Cancel task',()=>confirmTaskCancellation(t)));
  }
  if(t.status==='cancelled'){
   if(user.role==='admin'||t.author_id===user.id)actions.append(button('Restore',async()=>{
-    await mutate('restore',t);await card(number);await screen();notice('Task restored with New status.');
+    await mutate('restore',t);await card(number);await screen();notice('Task restored.');
   },'primary'));
   if(user.role==='admin')actions.append(button('Delete task',()=>confirmTaskDeletion(t),'danger'));
  }content.append(actions);
+}
+function editMaterials(t){
+ modal('Working materials',()=>card(t.number));
+ const form=el('form'),rows=el('div'),items=[];
+ const addRow=(material={})=>{
+   if(items.length>=20){notice('You can pin up to 20 links.');return;}
+   const row=el('fieldset'),title=field(row,'title','Name','text',material.title ?? ''),url=field(row,'url','Link','url',material.url ?? '');
+   title.required=true;title.maxLength=120;url.required=true;url.maxLength=2048;
+   const item={row,title,url};items.push(item);
+   row.append(button('Remove link',()=>{items.splice(items.indexOf(item),1);row.remove();},'quiet'));
+   rows.append(row);
+ };
+ for(const link of t.working_links ?? [])addRow(link);
+ if(!items.length)addRow();
+ const submit=el('button','Save links','primary');
+ form.append(rows,button('Add link',()=>addRow()),submit);
+ form.onsubmit=async event=>{
+   event.preventDefault();submit.disabled=true;
+   try{
+     const links=items.map(({title,url})=>{
+       const address=new URL(url.value.trim());
+       if(!['https:','http:'].includes(address.protocol))throw new Error('Use an http or https link.');
+       return {title:title.value.trim(),url:address.href};
+     });
+     await mutate('materials',t,{links});
+     await card(t.number);await screen();
+   }catch(error){notice(error.message);submit.disabled=false;}
+ };
+ content.append(form);
 }
 function editDeadline(t){
  modal('Change due date',()=>card(t.number));
@@ -348,22 +392,38 @@ async function projectScreen(main){
  ({members}=await api('members'));
  const header=el('header'),list=el('div',undefined,'card-grid');
  header.append(el('h2','Projects'));
- header.append(button('Create project',async()=>{
-   modal('New project');const form=el('form');const name=field(form,'name','Title');name.required=true;name.maxLength=120;
+ if(user.role==='admin')header.append(button('Create project',async()=>{
+   modal('New project');const form=el('form');
+   select(form,'visibility','Visibility',[['shared','Shared'],['personal','Personal']],projectVisibility);
+   form.append(el('p','Personal projects are visible to their creator, assigned members and responsible administrators.','muted'));const name=field(form,'name','Title');name.required=true;name.maxLength=120;
    field(form,'description','Description','textarea');
    const owner=select(form,'owner','Responsible administrator',members.filter(m=>m.role==='admin').map(m=>[m.id,m.name]),user.role==='admin'?user.id:members.find(m=>m.role==='admin')?.id);owner.required=true;
    const submit=el('button','Create','primary');form.append(submit);
-   form.onsubmit=async e=>{e.preventDefault();submit.disabled=true;try{await api('projects',{action:'project_create',data:{name:name.value,description:form.elements.description.value,admins:[owner.value]}});dialog.close();await screen();}catch(e){notice(e.message);}finally{submit.disabled=false;}};
+   form.onsubmit=async e=>{e.preventDefault();submit.disabled=true;try{await api('projects',{action:'project_create',data:{name:name.value,description:form.elements.description.value,visibility:form.elements.visibility.value,admins:[owner.value]}});dialog.close();await screen();}catch(e){notice(e.message);}finally{submit.disabled=false;}};
    content.append(form);
  },'primary'));
- main.append(header,list);
- for(const project of projects){
+ const tabs=el('div',undefined,'actions');
+ for(const [value,label] of [['shared','Shared projects'],['personal','Personal projects']]){
+   const tab=button(label,async()=>{projectVisibility=value;await screen();},projectVisibility===value?'primary':'quiet');
+   tab.setAttribute('aria-pressed',String(projectVisibility===value));tabs.append(tab);
+ }
+ main.append(header,tabs,list);
+ const visibleProjects=projects.filter(project=>(project.visibility ?? 'shared')===projectVisibility);
+ if(!visibleProjects.length)list.append(el('p','No projects in this section.','muted'));
+ for(const project of visibleProjects){
    const item=el('section',undefined,'account');item.append(el('h3',project.name),el('p',project.description ?? ''),el('p',project.archived?'Archived':'Active','muted'));
    const controls=el('div',undefined,'actions');
    controls.append(button('Open project',async()=>{
      scope='project';activeProject=project;page=0;filters={};await screen();
    }));
-   if(user.role==='admin')controls.append(button(project.archived?'Restore':'Archive',async()=>{
+   if(user.role==='admin')controls.append(button('Visibility',()=>{
+     modal('Project visibility',()=>{dialog.close();});
+     const form=el('form'),visibility=select(form,'visibility','Visibility',[['shared','Shared'],['personal','Personal']],project.visibility ?? 'shared');
+     form.append(el('p','Shared projects are listed for everyone. Personal projects are listed for their creator, assigned members and responsible administrators.','muted'));
+     const save=el('button','Save','primary');form.append(save);
+     form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{await api('projects',{action:'project_visibility',data:{id:project.id,visibility:visibility.value}});projectVisibility=visibility.value;dialog.close();await screen();}catch(error){notice(error.message);save.disabled=false;}};
+     content.append(form);
+   }),button(project.archived?'Restore':'Archive',async()=>{
      await api('projects',{action:'project_archive',data:{id:project.id,archived:!project.archived}});await screen();
    }),button('Owners',()=>{
      modal('Owners · '+project.name);const form=el('form');
@@ -373,7 +433,7 @@ async function projectScreen(main){
      content.append(form);
    }),button('Delete project',()=>{
      modal('Delete project?');
-     content.append(el('p','Project “'+project.name+'” will be deleted if it has no tasks.'));
+     content.append(el('p','Project “'+project.name+'” and all its tasks will be deleted.'));
      const error=el('p','','muted');
      error.setAttribute('role','alert');
      const actions=el('div',undefined,'actions');

@@ -1,4 +1,4 @@
-const statuses = {new:'New', in_progress:'In progress', review:'In review', done:'Done', cancelled:'Cancelled'};
+const statuses = {new:'New', in_progress:'In progress', recurring:'Recurring', review:'In review', done:'Done', cancelled:'Cancelled'};
 const button = (text, callback_data) => ({text, callback_data});
 const baseMenu = [[button('Create task','create'), button('My tasks','list:0')],[button('Due today','today:0'),button('Overdue','overdue:0')],[button('Projects','projects')]];
 const date = value => value.split('-').reverse().join('.');
@@ -20,7 +20,7 @@ export function render(screen) {
     for (const file of t.attachments ?? []) keyboard.push([button('📎 '+file.name.slice(0,45),'attachment:'+file.id)]);
     const assigned=t.assignees?.some(m=>m.id===screen.actor_id) ?? true;
     if (t.status==='new' && assigned) keyboard.push([button('Start work','begin:'+t.number+':'+t.version)]);
-    if (t.status==='in_progress' && assigned) keyboard.push([button('Submit result','result:'+t.number+':'+t.version)]);
+    if (['in_progress','recurring'].includes(t.status) && assigned) keyboard.push([button('Submit result','result:'+t.number+':'+t.version)]);
     if(screen.admin && !['done','cancelled'].includes(t.status))keyboard.push([button('Owners','task_team:'+t.number+':'+t.version)]);
     if (screen.admin && t.status==='review') keyboard.push([button('Approve','approve:'+t.number+':'+t.version),button('Return to progress','return:'+t.number+':'+t.version)]);
     if ((screen.admin || screen.actor_id===t.author_id) && !['done','cancelled'].includes(t.status)) keyboard.push([button('Cancel task','cancel_task:'+t.number+':'+t.version)]);
