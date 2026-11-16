@@ -127,6 +127,12 @@ function setup(code){
  form.onsubmit=async e=>{e.preventDefault();submit.disabled=true;try{await api('setup',{code:code ?? token.value.trim(),password:password.value});dialog.close();notice('Password saved. You can now sign in.');}catch(e){notice(e.message);}finally{submit.disabled=false;}};
  content.append(form);
 }
+async function signOut(){
+ try{await api('logout',{});}catch(error){if(error.status!==401)throw error;}
+ dialog.close();content.replaceChildren();
+ user=null;projects=[];members=[];scope='mine';activeProject=null;filters={};page=0;
+ await login();
+}
 async function start(){
  ({user}=await api('me'));
  [projects,members]=await Promise.all([api('projects').then(x=>x.projects),api('members').then(x=>x.members)]);
@@ -136,7 +142,7 @@ async function start(){
  for(const [key,label] of [['mine','My tasks'],['today','Due today'],['overdue','Overdue'],['projects','Projects'],...(user.role==='admin'?[['all','All tasks']]:[]),['archive','Archive'],...(user.role==='admin'?[['cancelled','Cancelled']]:[]),...(user.role==='admin'?[['accounts','Members']]:[])]){
   const b=button(label,async()=>{scope=key;activeProject=null;page=0;if(key==='archive')filters={};if(['today','overdue'].includes(key))delete filters.deadline;await screen();});b.dataset.scope=key;navigation.append(b);
  }
- const telegramLink=el('a','Open in Telegram');telegramLink.href='https://t.me/bnb_tasks_manager_bot?start=web';telegramLink.target='_self';const bottom=el('div',undefined,'sidebar-bottom');bottom.append(button('Link Telegram',async()=>{const {code}=await api('link-code',{});modal('Link Telegram');content.append(el('p','Send this command to the bot within 15 minutes.'),el('code','/link '+code));}),el('footer',user.name));aside.append(telegramLink,bottom);shell.append(aside,el('main'));app.replaceChildren(topbar(),shell);await screen();
+ const telegramLink=el('a','Open in Telegram');telegramLink.href='https://t.me/bnb_tasks_manager_bot?start=web';telegramLink.target='_self';const bottom=el('div',undefined,'sidebar-bottom');bottom.append(button('Link Telegram',async()=>{const {code}=await api('link-code',{});modal('Link Telegram');content.append(el('p','Send this command to the bot within 15 minutes.'),el('code','/link '+code));}),el('footer',user.name),button('Sign out',signOut));aside.append(telegramLink,bottom);shell.append(aside,el('main'));app.replaceChildren(topbar(),shell);await screen();
 }
 async function screen(){
  for(const b of document.querySelectorAll('[data-scope]')){
@@ -201,7 +207,7 @@ async function screen(){
    list.append(row);
  }
  if(!tasks.length)list.append(el('div','No tasks match these filters.','empty'));main.append(list);
- const nav=el('div',undefined,'pager');if(page)nav.append(button('← Back',async()=>{page--;await screen();}));if(tasks.length>20)nav.append(button('Next →',async()=>{page++;await screen();}));nav.append(button('Refresh',screen),button('Sign out',async()=>{try{await api('logout',{});}catch(e){if(e.status!==401)throw e;}await login();}));main.append(nav);
+ const nav=el('div',undefined,'pager');if(page)nav.append(button('← Back',async()=>{page--;await screen();}));if(tasks.length>20)nav.append(button('Next →',async()=>{page++;await screen();}));nav.append(button('Refresh',screen));main.append(nav);
 }
 async function mutate(action,t,data={},requestId=newRequestId()){const result=await api('tasks',{action,requestId,data:{number:t.number,version:t.version,...data}});return result.task;}
 async function card(number){
