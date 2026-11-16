@@ -50,6 +50,10 @@ if ! docker compose -f deploy/compose.yml build web bot; then
   rollback
   exit 1
 fi
+if ! docker run --rm -v "$staging/source/scripts:/app/scripts:ro" deploy-web node scripts/checks/web-action-routing.mjs; then
+  rollback
+  exit 1
+fi
 if ! docker compose -f deploy/compose.yml up -d --no-deps --no-build --wait --wait-timeout 120 web bot; then
   rollback
   exit 1

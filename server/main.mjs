@@ -131,7 +131,7 @@ const server=createServer(async(req,res)=>{
     }
     if(req.method==='POST' && route.pathname==='/api/tasks') {
       const body=await json(req);
-      if(!['create','edit','begin','result','approve','return','cancel','restore','delete'].includes(body.action) ||
+      if(!['create','edit','begin','result','approve','return','cancel','restore','delete','materials','complete'].includes(body.action) ||
         !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(body.requestId ?? '') ||
         !body.data || typeof body.data!=='object' || Array.isArray(body.data)) return reply(400,{error:'Invalid request.'});
       const task=await rpc('task_api',{p_user:user.id,p_action:body.action,p_data:body.data,p_request:body.requestId});
@@ -139,7 +139,7 @@ const server=createServer(async(req,res)=>{
     }
     if(req.method==='POST' && route.pathname==='/api/projects'){
       const body=await json(req);
-      if(!['project_create','project_archive','project_admins','project_delete'].includes(body.action) || !body.data || typeof body.data!=='object')
+      if(!['project_create','project_archive','project_admins','project_delete','project_members','project_visibility'].includes(body.action) || !body.data || typeof body.data!=='object')
         return reply(400,{error:'Invalid request.'});
       if(body.action==='project_delete'){
         const id=body.data.id;
