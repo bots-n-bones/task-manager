@@ -393,6 +393,16 @@ function edit(t,projectId){
   dialog.close();await screen();notice(t?'Changes saved.':'Task created.');
  }catch(e){notice(e.message);}finally{submit.disabled=false;}};content.append(form);
 }
+function projectMemberFields(form,selected=[]){
+ const group=el('fieldset');group.append(el('legend','Project members'));
+ group.append(el('p','Selected people see this personal project even when they have no tasks assigned.','muted'));
+ for(const member of members){
+   const input=field(group,'project_members',member.name,'checkbox');
+   input.value=member.id;input.checked=selected.includes(member.id);
+ }
+ form.append(group);
+ return group;
+}
 async function projectScreen(main){
  ({projects}=await api('projects'));
  ({members}=await api('members'));
@@ -400,12 +410,14 @@ async function projectScreen(main){
  header.append(el('h2','Projects'));
  if(user.role==='admin')header.append(button('Create project',async()=>{
    modal('New project');const form=el('form');
-   select(form,'visibility','Visibility',[['shared','Shared'],['personal','Personal']],projectVisibility);
-   form.append(el('p','Personal projects are visible to their creator, assigned members and responsible administrators.','muted'));const name=field(form,'name','Title');name.required=true;name.maxLength=120;
+   const visibility=select(form,'visibility','Visibility',[['shared','Shared'],['personal','Personal']],projectVisibility);
+   const assigned=projectMemberFields(form);assigned.hidden=visibility.value!=='personal';
+   visibility.onchange=()=>assigned.hidden=visibility.value!=='personal';
+   form.append(el('p','Personal projects are visible to their creator, project members, assigned performers and the responsible administrator.','muted'));const name=field(form,'name','Title');name.required=true;name.maxLength=120;
    field(form,'description','Description','textarea');
    const owner=select(form,'owner','Responsible administrator',members.filter(m=>m.role==='admin').map(m=>[m.id,m.name]),user.role==='admin'?user.id:members.find(m=>m.role==='admin')?.id);owner.required=true;
    const submit=el('button','Create','primary');form.append(submit);
-   form.onsubmit=async e=>{e.preventDefault();submit.disabled=true;try{await api('projects',{action:'project_create',data:{name:name.value,description:form.elements.description.value,visibility:form.elements.visibility.value,admins:[owner.value]}});dialog.close();await screen();}catch(e){notice(e.message);}finally{submit.disabled=false;}};
+   form.onsubmit=async e=>{e.preventDefault();submit.disabled=true;try{await api('projects',{action:'project_create',data:{name:name.value,description:form.elements.description.value,visibility:form.elements.visibility.value,admins:[owner.value],members:form.elements.visibility.value==='personal'?new FormData(form).getAll('project_members'):[]}});dialog.close();await screen();}catch(e){notice(e.message);}finally{submit.disabled=false;}};
    content.append(form);
  },'primary'));
  const tabs=el('div',undefined,'actions');
@@ -418,6 +430,12 @@ async function projectScreen(main){
  if(!visibleProjects.length)list.append(el('p','No projects in this section.','muted'));
  for(const project of visibleProjects){
    const item=el('section',undefined,'account');item.append(el('h3',project.name),el('p',project.description ?? ''),el('p',project.archived?'Archived':'Active','muted'));
+   const ownerNames=(project.admins ?? []).map(id=>members.find(member=>member.id===id)?.name).filter(Boolean);
+   item.append(el('p','Administrator · '+ownerNames.join(', '),'muted'));
+   if(project.visibility==='personal'){
+     const assignedNames=(project.members ?? []).map(id=>members.find(member=>member.id===id)?.name).filter(Boolean);
+     item.append(el('p','Members · '+(assignedNames.join(', ') || 'No members assigned'),'muted'));
+   }
    const controls=el('div',undefined,'actions');
    controls.append(button('Open project',async()=>{
      scope='project';activeProject=project;page=0;filters={};await screen();
@@ -425,19 +443,26 @@ async function projectScreen(main){
    if(user.role==='admin')controls.append(button('Visibility',()=>{
      modal('Project visibility',()=>{dialog.close();});
      const form=el('form'),visibility=select(form,'visibility','Visibility',[['shared','Shared'],['personal','Personal']],project.visibility ?? 'shared');
-     form.append(el('p','Shared projects are listed for everyone. Personal projects are listed for their creator, assigned members and responsible administrators.','muted'));
+     form.append(el('p','Shared projects are listed for everyone. Personal projects are listed for their creator, project members, assigned performers and the responsible administrator.','muted'));
      const save=el('button','Save','primary');form.append(save);
      form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{await api('projects',{action:'project_visibility',data:{id:project.id,visibility:visibility.value}});projectVisibility=visibility.value;dialog.close();await screen();}catch(error){notice(error.message);save.disabled=false;}};
      content.append(form);
    }),button(project.archived?'Restore':'Archive',async()=>{
      await api('projects',{action:'project_archive',data:{id:project.id,archived:!project.archived}});await screen();
-   }),button('Owners',()=>{
-     modal('Owners · '+project.name);const form=el('form');
-     for(const m of members.filter(x=>x.role==='admin')){const input=field(form,'admins',m.name,'checkbox');input.value=m.id;input.checked=project.admins?.includes(m.id) ?? false;}
+   }),button('Administrator',()=>{
+     modal('Administrator · '+project.name);const form=el('form');
+     const owner=select(form,'owner','Responsible administrator',members.filter(member=>member.role==='admin').map(member=>[member.id,member.name]),project.admins?.[0]);
+     owner.required=true;
      const submit=el('button','Save','primary');form.append(submit);
-     form.onsubmit=async e=>{e.preventDefault();submit.disabled=true;try{const admins=new FormData(form).getAll('admins');if(!admins.length)throw new Error('Select at least one administrator.');await api('projects',{action:'project_admins',data:{id:project.id,admins}});dialog.close();await screen();}catch(e){notice(e.message);}finally{submit.disabled=false;}};
+     form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;try{await api('projects',{action:'project_admins',data:{id:project.id,admins:[owner.value]}});dialog.close();await screen();}catch(error){notice(error.message);submit.disabled=false;}};
      content.append(form);
-   }),button('Delete project',()=>{
+   }),...(project.visibility==='personal'?[button('Project members',()=>{
+     modal('Members · '+project.name);const form=el('form');
+     projectMemberFields(form,project.members ?? []);
+     const submit=el('button','Save members','primary');form.append(submit);
+     form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;try{await api('projects',{action:'project_members',data:{id:project.id,members:new FormData(form).getAll('project_members')}});dialog.close();await screen();}catch(error){notice(error.message);submit.disabled=false;}};
+     content.append(form);
+   })]:[]),button('Delete project',()=>{
      modal('Delete project?');
      content.append(el('p','Project “'+project.name+'” and all its tasks will be deleted.'));
      const error=el('p','','muted');
